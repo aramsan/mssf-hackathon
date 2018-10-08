@@ -7,5 +7,6 @@ urlpatterns = [
     path('status', views.status),
     path('drop', views.drop),
     path('extract', views.extract),
+    path('crawl', views.crawl),
 ]
 

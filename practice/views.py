@@ -1,10 +1,12 @@
 from django.http import HttpResponse
 from django.shortcuts import render
+from .models import Tweet
+
 from twitter import *
 from janome.tokenizer import Tokenizer
 import requests
 import json
-import time
+import datetime,pytz
 import urllib
 import calendar
 import re
@@ -24,18 +26,30 @@ def main(request):
 def input(request):
     name = request.GET.get("name")
     if name == None:
+        tweets = Tweet.objects.all()
+    else:
+        tweets = Tweet.objects.filter(screen_name=name)
+    for tweet in tweets:
+        text = re.sub('(https?|ftp)(:\/\/[-_\.!~*\'()a-zA-Z0-9;\/?:\@&=\+\$,%#]+)', ' ', tweet.text)
+        events = ['screen_name_' + tweet.screen_name]
+        events.extend(janome(text))
+        events.extend(hashTag(text))
+        created_at = tweet.created_at.strftime('%Y/%m/%d %H:%M:%S')
+        print(events)
+        r = setEvent(created_at, events)
+    return HttpResponse(r)
+
+def crawl(request):
+    name = request.GET.get("name")
+    if name == None:
         name = "gaiaxnews"
     tweets = importTweet(name)
     for tweet in tweets:
-        text = re.sub('(https?|ftp)(:\/\/[-_\.!~*\'()a-zA-Z0-9;\/?:\@&=\+\$,%#]+)', ' ', tweet['text'])
-        events = ['screen_name_' + tweet['screen_name']]
-        events.extend(janome(text))
-        events.extend(hashTag(text))
-        print(events)
-        r = setEvent(tweet['created_at'], events)
-
-    return HttpResponse(r)
-    
+        if Tweet.objects.filter(status_id=tweet['id']).count() ==0:
+            creation = Tweet(status_id=tweet['id'], screen_name=tweet['screen_name'],text=tweet['text'],created_at=tweet['created_at']);
+            creation.save()
+    return HttpResponse("Crawled!")
+ 
 def status(request):
     apiurl = BASEURL + "build/getstatus"
     
@@ -135,10 +149,9 @@ def importTweet(screen_name):
     return tweets
 
 def YmdHMS(created_at):
-    time_utc = time.strptime(created_at, '%a %b %d %H:%M:%S +0000 %Y')
-    unix_time = calendar.timegm(time_utc)
-    time_local = time.localtime(unix_time)
-    return time.strftime("%Y/%m/%d %H:%M:%S", time_local)
+    jst = pytz.timezone('Japan')
+    utc = datetime.datetime.strptime(created_at, '%a %b %d %H:%M:%S +0000 %Y')
+    return utc.replace(tzinfo=jst)
 
 def janome(text):
     t = Tokenizer()
