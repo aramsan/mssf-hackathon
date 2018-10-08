@@ -26,15 +26,16 @@ def main(request):
 def input(request):
     name = request.GET.get("name")
     if name == None:
-        tweets = Tweet.objects.all()
+        tweets = Tweet.objects.all().order_by('created_at')
     else:
-        tweets = Tweet.objects.filter(screen_name=name)
+        tweets = Tweet.objects.filter(screen_name=name).order_by('created_at')
     for tweet in tweets:
         text = re.sub('(https?|ftp)(:\/\/[-_\.!~*\'()a-zA-Z0-9;\/?:\@&=\+\$,%#]+)', ' ', tweet.text)
         events = ['screen_name_' + tweet.screen_name]
         events.extend(janome(text))
         events.extend(hashTag(text))
         created_at = tweet.created_at.strftime('%Y/%m/%d %H:%M:%S')
+        #print(created_at)
         print(events)
         r = setEvent(created_at, events)
     return HttpResponse(r)
