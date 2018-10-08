@@ -7,6 +7,7 @@ import json
 import time
 import urllib
 import calendar
+import re
 
 BASEURL = "http://hackathon.mssf.jp/socialize5_1/"
 CID = 2018101102
@@ -26,8 +27,10 @@ def input(request):
         name = "gaiaxnews"
     tweets = importTweet(name)
     for tweet in tweets:
+        text = re.sub('(https?|ftp)(:\/\/[-_\.!~*\'()a-zA-Z0-9;\/?:\@&=\+\$,%#]+)', ' ', tweet['text'])
         events = ['screen_name_' + tweet['screen_name']]
-        events.extend(janome(tweet['text']))
+        events.extend(janome(text))
+        events.extend(hashTag(text))
         print(events)
         r = setEvent(tweet['created_at'], events)
 
@@ -137,9 +140,9 @@ def YmdHMS(created_at):
     time_local = time.localtime(unix_time)
     return time.strftime("%Y/%m/%d %H:%M:%S", time_local)
 
-def janome(val):
+def janome(text):
     t = Tokenizer()
-    tokens = t.tokenize(val)
+    tokens = t.tokenize(text)
     data = []
     for token in tokens:
         partOfSpeech = token.part_of_speech.split(',')[0]
@@ -147,3 +150,8 @@ def janome(val):
             if token.surface != "#":
                 data.append(token.surface)
     return data
+
+def hashTag(text):
+    pattern = '[#＃]([\w一-龠ぁ-んァ-ヴーａ-ｚ]+)'
+    hashTags = re.findall(pattern, text)
+    return hashTags
