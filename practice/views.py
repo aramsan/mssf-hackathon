@@ -59,7 +59,7 @@ def crawlTweet(name):
     tweets = importTweet(name)
     for tweet in tweets:
         if Tweet.objects.filter(status_id=tweet['id']).count() ==0:
-            creation = Tweet(status_id=tweet['id'], screen_name=tweet['screen_name'],text=tweet['text'],created_at=tweet['created_at']);
+            creation = Tweet(status_id=tweet['id'], screen_name=tweet['screen_name'], user_id=tweet['user_id'], user_name=tweet['user_name'], text=tweet['text'],created_at=tweet['created_at']);
             creation.save()
     return
  
@@ -96,6 +96,7 @@ def drop(request):
 
     return HttpResponse(r)
 
+
 def extract(request):
     if request.POST.get("word"):
         screen_name = request.POST.get("twitter")
@@ -107,7 +108,6 @@ def extract(request):
         word = "screen_name_gaiaxnews"
     if screen_name == None:
         screen_name = "gaiaxnews"
-    apiurl = BASEURL + "extract/execute"
 
     # tweet取り込んでないアカウントだったら取り込み＆関係性追加
     if Tweet.objects.filter(screen_name=screen_name).count() == 0:
@@ -115,19 +115,44 @@ def extract(request):
         inputRelation(screen_name)     
         time.sleep(1)
 
-    basenode=urllib.parse.quote(word) 
+    word_list   = executeExtract(basenode=urllib.parse.quote(word))
+    print(word_list)
+    if word_list[0]['error'].startswith('request'):
+        return HttpResponse(word_list[0]['error'])
+    if word_list[0]['screen_name']  == "":
+        return HttpResponse("ご指定のワードで関係性を抽出できませんでした")
+     
+    screen_name = word_list[0]['screen_name']
+    user_id = word_list[0]['user_id']
+    user_name = word_list[0]['user_name'] 
+    message = user_name + "さんとコラボするとおもしろいいと思います。"
+ 
+    account_list = executeExtract(basenode=urllib.parse.quote("screen_name_" + screen_name))
+    print(account_list)
+    if account_list[0]['error'] == "" and len(account_list) >1:
+        message += "もう一つ言うと、" + account_list[1]['user_name'] + "さんとコラボしても面白いと思いますよ"
+        if word_list[0]['distance'] > account_list[1]['distance']:
+            screen_name = account_list[1]['screen_name']
+            user_id = account_list[1]['user_id']
+            user_name = account_list[1]['user_name']
+            message = word + "でコラボするより" + user_name + "さんとコラボすることをおすすめします"
+
+    return render(request, 'practice/result.html', {'screen_name':screen_name, 'user_id':user_id, 'user_name':user_name, 'message':message})
+
+def executeExtract(basenode):
+    apiurl = BASEURL + "extract/execute"
     query = {
         'clientid': CID,
         'libraryid': LID,
         'basenode': basenode,
-        'preset': '1_5',
+        'preset': '1',
         'precision': 5,
         'decay': True,
     }
     r = requests.post(apiurl, params=query)
     dec = r.json()
     if 'requestid' not in r.json():
-        return HttpResponse("request idがありません。指定されたワードで関係性を抽出できませんでした") 
+        return [{'error':"request idがありません。指定されたワードで関係性を抽出できませんでした", 'screen_name':""}] 
     requestid = dec['requestid']
     print('request id: ' + str(requestid))
 
@@ -148,23 +173,19 @@ def extract(request):
         datas[urllib.parse.unquote(node_name)]=distance
         #node_list.append({'name':urllib.parse.unquote(node_name), 'distance':distance})
         #print(node_name + " : " + str(distance))
-    screen_name = None
+    match_list = []
     for k, v in sorted(datas.items(), key=lambda x: x[1]):
         node_list[k]=v
-        print(k.startswith("screen_name_"))
+        #print(basenode + ": " + str(k)+ " : " + str(v))
         if k.startswith("screen_name_"):
-            print("Hit!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
-            if screen_name == None:
-                print("First Hit!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
-                screen_name = k.replace("screen_name_","")
+            screen_name = k.replace("screen_name_","")
+            data = Tweet.objects.filter(screen_name=screen_name)
+            match_list.append({'screen_name':screen_name, 'user_id':data[0].user_id, 'user_name':data[0].user_name, 'distance':v, 'error':''})
 
-    #for node_name,similarity  in r.json()['nodeSimilarity']['values'].items():
-    #    name = urllib.parse.unquote(node_name)
-    #    #print(name + " : " + str(similarity))
+    return match_list
 
-    
-    return render(request, 'practice/result.html', {'screen_name': screen_name })
-    #return render(request, 'practice/result_list.html', {'node_list': node_list })
+
+
 
 def evaluategraph(request): 
     apiurl = BASEURL + "manage/evaluategraph"
@@ -208,7 +229,7 @@ def importTweet(screen_name):
     tweets = []
     for timeline in timelines:
         id = timeline['id']
-        tweets.append({'id':timeline['id'], 'created_at':YmdHMS(timeline['created_at']), 'screen_name':timeline['user']['screen_name'], 'text':timeline['full_text']})
+        tweets.append({'id':timeline['id'], 'created_at':YmdHMS(timeline['created_at']), 'screen_name':timeline['user']['screen_name'], 'user_id':timeline['user']['id'], 'user_name':timeline['user']['name'], 'text':timeline['full_text']})
     return tweets
 
 def YmdHMS(created_at):
