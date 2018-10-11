@@ -122,15 +122,15 @@ def extract(request):
     if word_list[0]['screen_name']  == "":
         return HttpResponse("ご指定のワードで関係性を抽出できませんでした")
      
+    account_list = executeExtract(basenode=urllib.parse.quote("screen_name_" + screen_name))
     screen_name = word_list[0]['screen_name']
     user_id = word_list[0]['user_id']
     user_name = word_list[0]['user_name'] 
-    message = user_name + "さんとコラボするとおもしろいいと思います。"
+    message = word + "でコラボするなら" + user_name + "さんとコラボするとおもしろいいと思います。"
  
-    account_list = executeExtract(basenode=urllib.parse.quote("screen_name_" + screen_name))
     print(account_list)
     if account_list[0]['error'] == "" and len(account_list) >1:
-        message += "もう一つ言うと、" + account_list[1]['user_name'] + "さんとコラボしても面白いと思いますよ"
+        message += "もう一つ言うと、" + word + "にこだわらず" + account_list[1]['user_name'] + "さんとコラボしても面白いと思いますよ"
         if word_list[0]['distance'] > account_list[1]['distance']:
             screen_name = account_list[1]['screen_name']
             user_id = account_list[1]['user_id']
