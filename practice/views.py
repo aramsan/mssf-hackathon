@@ -6,7 +6,7 @@ from twitter import *
 from janome.tokenizer import Tokenizer
 import requests
 import json
-import datetime,pytz
+import time,datetime,pytz
 import urllib
 import calendar
 import re
@@ -21,10 +21,14 @@ ACCESS_TOKEN        = '219330389-KTcnHtvS1XNOyvSLVadDSK8uM7H0AuRZxh01bOFv'
 ACCESS_TOKEN_SECRET = 'lrrQNjsWA3XmeU6xN9DzFQfFBAarTEekhgiTK2KBdpFGS'
 
 def main(request):
-    return HttpResponse("Hello!")
+    return render(request, 'practice/index.html')
 
 def input(request):
     name = request.GET.get("name")
+    inputRelation(name)
+    return HttpResponse('完了')
+
+def inputRelation(name):
     if name == None:
         tweets = Tweet.objects.all().order_by('created_at')
     else:
@@ -32,13 +36,17 @@ def input(request):
     for tweet in tweets:
         text = re.sub('(https?|ftp)(:\/\/[-_\.!~*\'()a-zA-Z0-9;\/?:\@&=\+\$,%#]+)', ' ', tweet.text)
         events = ['screen_name_' + tweet.screen_name]
-        events.extend(janome(text))
+        #events.extend(janome(text))
         events.extend(hashTag(text))
         created_at = tweet.created_at.strftime('%Y/%m/%d %H:%M:%S')
         #print(created_at)
-        print(events)
-        r = setEvent(created_at, events)
-    return HttpResponse(r)
+        if len(events) > 1:
+            print(events)
+            r = setEvent(created_at, events)
+    return
+
+def link(request): 
+    return render(request, 'practice/link.html')
 
 def crawl(request):
     name = request.GET.get("name")
@@ -85,9 +93,16 @@ def drop(request):
     return HttpResponse(r)
 
 def extract(request):
-    word = request.GET.get("word")
+    if request.POST.get("word"):
+        screen_name = request.POST.get("word")
+        word = request.POST.get("word")
+    else:
+        screen_name = request.GET.get("word")
+        word = request.GET.get("word")
     if word == None:
-        word = "ガイアックス"
+        word = "screen_name_gaiaxnews"
+    if screen_name == None:
+        screen_name = "screen_name_gaiaxnews"
     apiurl = BASEURL + "extract/execute"
 
     basenode=urllib.parse.quote(word) 
@@ -101,9 +116,12 @@ def extract(request):
     }
     r = requests.post(apiurl, params=query)
     dec = r.json()
+    if 'requestid' not in r.json():
+        return HttpResponse("request idがありません。指定されたワードで関係性を抽出できませんでした") 
     requestid = dec['requestid']
     print('request id: ' + str(requestid))
 
+    time.sleep(1)    
     apiurl = BASEURL + "extract/getresult"
     query = {
         'clientid': CID,
@@ -112,6 +130,10 @@ def extract(request):
     r = requests.post(apiurl, params=query)
     datas={}
     node_list={}
+    print(r.json()['result'])
+    if r.json()['result'] == False:
+        return HttpResponse(r.json()['message'])
+
     for node_name, distance in r.json()['basenodeDistance']['values'].items():
         datas[urllib.parse.unquote(node_name)]=distance
         #node_list.append({'name':urllib.parse.unquote(node_name), 'distance':distance})
@@ -119,10 +141,32 @@ def extract(request):
     for k, v in sorted(datas.items(), key=lambda x: x[1]):
         node_list[k]=v
 
-    for node_name,similarity  in r.json()['nodeSimilarity']['values'].items():
-        name = urllib.parse.unquote(node_name)
-        #print(name + " : " + str(similarity))
-    return render(request, 'practice/index.html', {'node_list': node_list })
+    #for node_name,similarity  in r.json()['nodeSimilarity']['values'].items():
+    #    name = urllib.parse.unquote(node_name)
+    #    #print(name + " : " + str(similarity))
+
+    return render(request, 'practice/result_list.html', {'node_list': node_list })
+
+def evaluategraph(request): 
+    apiurl = BASEURL + "manage/evaluategraph"
+    query = {
+        'clientid': CID,
+        'libraryid': LID, 
+    }
+    r = requests.post(apiurl, params=query)
+    return HttpResponse(r)
+
+def getnodelist(request):
+    apiurl = BASEURL + "manage/getnodelist"
+    query = {
+        'clientid': CID,
+        'libraryid': LID, 
+    }
+    r = requests.post(apiurl, params=query)
+    node_list = []
+    for node_name in r.json()['nodes']:
+         node_list.append(urllib.parse.unquote(node_name))
+    return render(request, 'practice/getnodelist.html', {'node_list': node_list })
 
 def setEvent(date_time, events):
     event_data = ""
@@ -135,7 +179,6 @@ def setEvent(date_time, events):
         'libraryid': LID, 
         'event': date_time + event_data
     }
-    #print(query)
     return requests.post(apiurl, params=query)
 
 
@@ -168,4 +211,11 @@ def janome(text):
 def hashTag(text):
     pattern = '[#＃]([\w一-龠ぁ-んァ-ヴーａ-ｚ]+)'
     hashTags = re.findall(pattern, text)
+    extends = []
+    for hashTag in hashTags:
+        words = janome(hashTag)
+        for word in words:
+            if word != hashTag:
+                extends.append(word)
+    hashTags.extend(extends)
     return hashTags

@@ -1,0 +1,8 @@
+{% extends "base/base.html" %}
+{% block contents %}
+<table border>
+{% for node_name,distance in node_list.items %}
+    <tr><td>{{node_name}}</td><td>{{distance}}</td></tr>
+{% endfor %}
+</table>
+{% endblock contents %}
