@@ -4,6 +4,7 @@
 
 *.egg-info
 *.pot
+*.swp
 *.py[co]
 .tox/
 __pycache__

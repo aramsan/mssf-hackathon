@@ -52,12 +52,16 @@ def crawl(request):
     name = request.GET.get("name")
     if name == None:
         name = "gaiaxnews"
+    crawlTweet(name)
+    return HttpResponse("Crawled!")
+
+def crawlTweet(name):
     tweets = importTweet(name)
     for tweet in tweets:
         if Tweet.objects.filter(status_id=tweet['id']).count() ==0:
             creation = Tweet(status_id=tweet['id'], screen_name=tweet['screen_name'],text=tweet['text'],created_at=tweet['created_at']);
             creation.save()
-    return HttpResponse("Crawled!")
+    return
  
 def status(request):
     apiurl = BASEURL + "build/getstatus"
@@ -94,16 +98,22 @@ def drop(request):
 
 def extract(request):
     if request.POST.get("word"):
-        screen_name = request.POST.get("word")
+        screen_name = request.POST.get("twitter")
         word = request.POST.get("word")
     else:
-        screen_name = request.GET.get("word")
+        screen_name = request.GET.get("twitter")
         word = request.GET.get("word")
     if word == None:
         word = "screen_name_gaiaxnews"
     if screen_name == None:
-        screen_name = "screen_name_gaiaxnews"
+        screen_name = "gaiaxnews"
     apiurl = BASEURL + "extract/execute"
+
+    # tweet取り込んでないアカウントだったら取り込み＆関係性追加
+    if Tweet.objects.filter(screen_name=screen_name).count() == 0:
+        crawlTweet(screen_name)
+        inputRelation(screen_name)     
+        time.sleep(1)
 
     basenode=urllib.parse.quote(word) 
     query = {
@@ -138,14 +148,23 @@ def extract(request):
         datas[urllib.parse.unquote(node_name)]=distance
         #node_list.append({'name':urllib.parse.unquote(node_name), 'distance':distance})
         #print(node_name + " : " + str(distance))
+    screen_name = None
     for k, v in sorted(datas.items(), key=lambda x: x[1]):
         node_list[k]=v
+        print(k.startswith("screen_name_"))
+        if k.startswith("screen_name_"):
+            print("Hit!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+            if screen_name == None:
+                print("First Hit!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+                screen_name = k.replace("screen_name_","")
 
     #for node_name,similarity  in r.json()['nodeSimilarity']['values'].items():
     #    name = urllib.parse.unquote(node_name)
     #    #print(name + " : " + str(similarity))
 
-    return render(request, 'practice/result_list.html', {'node_list': node_list })
+    
+    return render(request, 'practice/result.html', {'screen_name': screen_name })
+    #return render(request, 'practice/result_list.html', {'node_list': node_list })
 
 def evaluategraph(request): 
     apiurl = BASEURL + "manage/evaluategraph"

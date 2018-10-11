@@ -1,0 +1,74 @@
+{% extends "base/base.html" %}
+{% load static %}
+{% block contents %}
+{% load static %}
+  <!-- Navbar -->
+
+  <!-- Full Page Intro -->
+  <div class="view full-page-intro" style="background-image: url('{% static "/img/shakehand.jpg" %}'); background-repeat: no-repeat; background-size: cover;">
+
+    <!-- Mask & flexbox options-->
+    <div class="mask rgba-black-light d-flex justify-content-center align-items-center">
+
+      <!-- Content -->
+      <div class="container">
+
+        <!--Grid row-->
+        <div class="row wow fadeIn">
+
+          <!--Grid column-->
+          <div class="col-md-6 mb-4 white-text text-center text-md-left">
+
+            <h1 class="display-4 font-weight-bold">あなたに最適なコラボは</h1>
+
+            <hr class="hr-light">
+
+            <p>
+              <strong>ご注意</strong>
+            </p>
+
+            <p class="mb-4 d-none d-md-block">
+              <strong>ここにでてきたからといってコラボできるわけではありません。コラボの交渉はご自分で。または、<a href="https://gaiax-socialmedialab.jp/contact/request/">株式会社ガイアックス ソーシャルメディアマーケティング事業部</a>にご相談ください。</strong>
+            </p>
+
+          </div>
+          <!--Grid column-->
+
+          <!--Grid column-->
+          <div class="col-md-6 col-xl-5 mb-4">
+
+            <!--Card-->
+            <div class="card">
+              <img class="card-img-top" src="http://www.paper-glasses.com/api/twipi/{{screen_name}}/original" alt="Card image cap">
+
+              <!--Card content-->
+              <div class="card-body">
+                <h5 class="card-title">{{screen_name}}</h5>
+                <p class="card-text">Some quick example text to build on the card title and make up the bulk of the card's content.</p>
+                <a href="https://twitter.com/{{screen_name}}" class="btn btn-primary">Twitterで見る</a>
+                <p><a href="/">もう一度探す</a></p>
+              </div>
+
+            </div>
+            <!--/.Card-->
+
+          </div>
+          <!--Grid column-->
+
+        </div>
+        <!--Grid row-->
+
+      </div>
+      <!-- Content -->
+
+    </div>
+    <!-- Mask & flexbox options-->
+
+  </div>
+  <!-- Full Page Intro -->
+
+  <!--Main layout-->
+  <main>
+  </main>
+  <!--Main layout-->
+{% endblock contents %}
